@@ -3,6 +3,11 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .ipynb_checkpoints/
+*.egg-info/
+.coverage
+htmlcov/
+tmp/
+output/
 data/raw/*
 data/interim/*
 data/processed/*
@@ -10,9 +15,7 @@ data/processed/*
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 artifacts/models/*
-artifacts/metrics/*
-artifacts/baseline/*
-reports/figures/*
-!reports/figures/.gitkeep
+# Metrics, baseline summaries and figures are intentionally versioned so that
+# portfolio viewers can inspect the published evaluation without rerunning it.
 *.pyc
 .DS_Store
