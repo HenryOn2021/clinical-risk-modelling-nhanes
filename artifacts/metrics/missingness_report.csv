@@ -1,0 +1,14 @@
+column,n_missing,pct_missing
+diastolic_bp_mean,1622,17.22
+systolic_bp_mean,1622,17.22
+poverty_income_ratio,1437,15.25
+bmi,883,9.37
+bmi_category,883,9.37
+education_level,470,4.99
+SEQN,0,0.0
+WTMECPRP,0,0.0
+age_group,0,0.0
+age_years,0,0.0
+race_ethnicity,0,0.0
+sex,0,0.0
+target_diabetes,0,0.0

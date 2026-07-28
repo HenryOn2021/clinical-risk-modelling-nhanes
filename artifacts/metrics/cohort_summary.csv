@@ -1,0 +1,11 @@
+metric,value
+n_rows,9421.0
+n_positive,1423.0
+target_prevalence,0.151
+target_weighted_prevalence,0.116
+age_years_mean,49.3633
+age_years_weighted_mean,47.3189
+bmi_mean,29.8259
+bmi_weighted_mean,29.6194
+systolic_bp_mean_mean,124.1049
+systolic_bp_mean_weighted_mean,121.5761
