@@ -8,17 +8,25 @@ from nhanes_showcase.config import ensure_project_dirs
 from nhanes_showcase.data_catalog import get_file_catalog
 from nhanes_showcase.ingest import download_catalog
 
-logging.basicConfig(level=logging.INFO,format="%(levelname)s%(message)s")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download NHANES XPT files from CDC")
-    parser.add_argument("--overwrite",action="store_true",help="Re-download existing files")
+    parser.add_argument(
+        "--include-glucose",
+        action="store_true",
+        help="Also download the optional fasting-glucose subsample file",
+    )
+    parser.add_argument("--overwrite", action="store_true", help="Re-download existing files")
     args = parser.parse_args()
 
     ensure_project_dirs()
-    files = download_catalog(get_file_catalog(), overwrite=args.overwrite)
+    catalog = get_file_catalog(include_glucose=args.include_glucose)
+    files = download_catalog(catalog, overwrite=args.overwrite)
     for name, path in files.items():
         print(f"{name}: {path}")
-        
+
+
 if __name__ == "__main__":
     main()
