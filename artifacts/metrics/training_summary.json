@@ -1,0 +1,48 @@
+{
+  "analysis_rows": 9421,
+  "training_rows": 7536,
+  "test_rows": 1885,
+  "training_prevalence": 0.15100849256900212,
+  "test_prevalence": 0.15119363395225463,
+  "numeric_features": [
+    "age_years",
+    "bmi",
+    "systolic_bp_mean",
+    "diastolic_bp_mean",
+    "poverty_income_ratio"
+  ],
+  "categorical_features": [
+    "sex",
+    "race_ethnicity",
+    "education_level"
+  ],
+  "best_parameters": {
+    "model__C": 1.0
+  },
+  "best_cv_roc_auc_mean": 0.791212700455507,
+  "best_cv_roc_auc_std": 0.011685842934774706,
+  "minimum_sensitivity_target": 0.8,
+  "selected_threshold": 0.13571751580948893,
+  "threshold_selection_source": "out-of-fold calibrated training predictions",
+  "oof_threshold_metrics": {
+    "threshold": 0.13571751580948893,
+    "roc_auc": 0.7905031696526431,
+    "average_precision": 0.36626152496765824,
+    "brier_score": 0.11064005463903172,
+    "accuracy": 0.6693205944798302,
+    "precision": 0.28683879093198994,
+    "recall_sensitivity": 0.8005272407732865,
+    "specificity": 0.6459831197249141,
+    "f1": 0.42234585071859065,
+    "npv": 0.9479357798165138,
+    "prevalence": 0.15100849256900212,
+    "positive_prediction_rate": 0.42144373673036095,
+    "n": 7536,
+    "tp": 911,
+    "fp": 2265,
+    "tn": 4133,
+    "fn": 227
+  },
+  "random_state": 42,
+  "cv_splits": 5
+}
