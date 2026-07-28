@@ -5,60 +5,86 @@ import pandas as pd
 
 from .config import TARGET_COL
 
+
 def weighted_mean(values: pd.Series, weights: pd.Series) -> float:
-    mask = values.notna() & weights.notna()
+    numeric_values = pd.to_numeric(values, errors="coerce")
+    numeric_weights = pd.to_numeric(weights, errors="coerce")
+    mask = (
+        numeric_values.notna()
+        & numeric_weights.notna()
+        & np.isfinite(numeric_values)
+        & np.isfinite(numeric_weights)
+        & numeric_weights.gt(0)
+    )
     if mask.sum() == 0:
         return float("nan")
-    return float(np.average(values.loc[mask], weights=weights.loc[mask]))
+    return float(np.average(numeric_values.loc[mask], weights=numeric_weights.loc[mask]))
+
 
 def weighted_prevalence(
-        df: pd.DataFrame, 
-        group_col: str, 
-        target_col: str = TARGET_COL, 
-        weight_col: str | None = None
+    df: pd.DataFrame, group_col: str, target_col: str = TARGET_COL, weight_col: str | None = None
 ) -> pd.DataFrame:
     records = []
-    for group, gdf in df.groupby(group_col, dropna=False):
+    for group, gdf in df.groupby(group_col, dropna=False, observed=False):
         if weight_col and weight_col in df.columns:
             prev = weighted_mean(gdf[target_col], gdf[weight_col])
         else:
             prev = float(gdf[target_col].mean())
         records.append(
             {
-                "group": group, 
-                "n": int(gdf.shape[0]), 
-                "prevalence": prev, 
+                "group": group,
+                "n": int(gdf.shape[0]),
+                "prevalence": prev,
                 "positive_cases": int(gdf[target_col].sum()),
             }
         )
     return pd.DataFrame(records).reset_index(drop=True)
 
+
 def describe_missingness(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(
         {
             "column": df.columns,
-            "n_missing": df.isna().sum().values, 
+            "n_missing": df.isna().sum().values,
             "pct_missing": (df.isna().mean().values * 100).round(2),
         }
     )
-    return out.sort_values(["pct_missing", "column"], ascending=[False, True]).reset_index(drop=True)
+    return out.sort_values(["pct_missing", "column"], ascending=[False, True]).reset_index(
+        drop=True
+    )
+
 
 def cohort_summary(df: pd.DataFrame, weight_col: str | None = None) -> pd.DataFrame:
-    rows = [{"metric": "n_rows", "value": int(df.shape[0])}]
+    rows = [
+        {"metric": "n_rows", "value": int(df.shape[0])},
+        {"metric": "n_positive", "value": int(df[TARGET_COL].sum())},
+        {"metric": "target_prevalence", "value": float(df[TARGET_COL].mean())},
+    ]
+    if weight_col and weight_col in df.columns:
+        rows.append(
+            {
+                "metric": "target_weighted_prevalence",
+                "value": weighted_mean(df[TARGET_COL], df[weight_col]),
+            }
+        )
     for col in ["age_years", "bmi", "systolic_bp_mean"]:
         if col in df.columns:
+            rows.append({"metric": f"{col}_mean", "value": float(df[col].mean())})
             if weight_col and weight_col in df.columns:
                 value = weighted_mean(df[col], df[weight_col])
-                rows.append({"metric": f"{col}_weighted_mean", "value": round(value,3)})
-                rows.append({"metric":f"{col}_mean", "value": round(float(df[col].mean()),3)})
+                rows.append({"metric": f"{col}_weighted_mean", "value": value})
+    for row in rows:
+        if isinstance(row["value"], float):
+            row["value"] = round(row["value"], 4)
     return pd.DataFrame(rows)
 
+
 def summarise_subgroups(
-        df: pd.DataFrame, 
-        group_col: str, 
-        target_col: str = TARGET_COL, 
-        weight_col: str | None = None,
+    df: pd.DataFrame,
+    group_col: str,
+    target_col: str = TARGET_COL,
+    weight_col: str | None = None,
 ) -> pd.DataFrame:
-    summary=weighted_prevalence(df, group_col, target_col=target_col, weight_col=weight_col)
-    summary=summary.rename(columns={"group":group_col})
+    summary = weighted_prevalence(df, group_col, target_col=target_col, weight_col=weight_col)
+    summary = summary.rename(columns={"group": group_col})
     return summary

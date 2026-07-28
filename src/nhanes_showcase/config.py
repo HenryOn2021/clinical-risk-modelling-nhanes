@@ -5,6 +5,8 @@ from pathlib import Path
 ID_COL = "SEQN"
 TARGET_COL = "target_diabetes"
 RANDOM_STATE = 42
+DEFAULT_TEST_SIZE = 0.20
+DEFAULT_CV_SPLITS = 5
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT_DIR / "data"
@@ -21,9 +23,11 @@ REPORTS_DIR = ROOT_DIR / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 DOCS_DIR = ROOT_DIR / "docs"
 
-WEIGHT_CANDIDATES = ["WTMECPRP", "WTMEC2YR", "WTINTPRP", "WTINT2YR"]
+EXAM_WEIGHT_CANDIDATES = ["WTMECPRP", "WTMEC2YR"]
+INTERVIEW_WEIGHT_CANDIDATES = ["WTINTPRP", "WTINT2YR"]
+FASTING_WEIGHT_CANDIDATES = ["WTSAFPRP", "WTSAF2YR"]
 
-PLOT_PATHS={
+PLOT_PATHS = {
     "target_balance": FIGURES_DIR / "target_balance.png",
     "missingness": FIGURES_DIR / "missingness_heatmap.png",
     "bmi_by_target": FIGURES_DIR / "bmi_by_target.png",
@@ -34,17 +38,19 @@ PLOT_PATHS={
     "confusion": FIGURES_DIR / "confusion_matrix_test.png",
     "fairness_sex": FIGURES_DIR / "fairness_tpr_by_sex.png",
     "fairness_age": FIGURES_DIR / "fairness_tpr_by_age_group.png",
+    "fairness_race": FIGURES_DIR / "fairness_tpr_by_race_ethnicity.png",
 }
 
-def ensure_project_dirs()->None:
+
+def ensure_project_dirs() -> None:
     for path in [
-        RAW_DIR, 
-        INTERIM_DIR, 
+        RAW_DIR,
+        INTERIM_DIR,
         PROCESSED_DIR,
-        MODELS_DIR, 
-        BASELINE_DIR, 
-        METRICS_DIR, 
-        FIGURES_DIR, 
-        DOCS_DIR
+        MODELS_DIR,
+        BASELINE_DIR,
+        METRICS_DIR,
+        FIGURES_DIR,
+        DOCS_DIR,
     ]:
         path.mkdir(parents=True, exist_ok=True)

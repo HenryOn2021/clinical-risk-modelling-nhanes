@@ -1,26 +1,32 @@
 from __future__ import annotations
 
-from mimetypes import init
-from typing import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
 
-from .config import ID_COL, WEIGHT_CANDIDATES
+from .config import (
+    EXAM_WEIGHT_CANDIDATES,
+    FASTING_WEIGHT_CANDIDATES,
+    ID_COL,
+    INTERVIEW_WEIGHT_CANDIDATES,
+    TARGET_COL,
+)
 from .schema import validate_tables
 
 QUESTIONNAIRE_CODE_COLUMNS = {"DIQ010", "DMDEDUC2"}
 CLINICAL_RANGES = {
-    "RIDAGEYR":(18,120),
-    "BMXBMI":(10,100),
-    "LBXGLU":(20,600),
-    "systolic_bp_mean":(60,260),
-    "diastolic_bp_mean":(30,180),
+    "RIDAGEYR": (18, 120),
+    "BMXBMI": (10, 100),
+    "LBXGLU": (20, 700),
+    "systolic_bp_mean": (60, 260),
+    "diastolic_bp_mean": (30, 180),
 }
 
+
 def standardise_missing_codes(
-        df:pd.DataFrame,
-        coded_columns:Iterable[str] | None=None,
+    df: pd.DataFrame,
+    coded_columns: Iterable[str] | None = None,
 ) -> pd.DataFrame:
     coded_columns = set(coded_columns or QUESTIONNAIRE_CODE_COLUMNS)
     out = df.copy()
@@ -30,7 +36,8 @@ def standardise_missing_codes(
             out[col] = out[col].replace(list(missing_codes), np.nan)
     return out
 
-def merge_tables(tables:dict[str,pd.DataFrame]) -> pd.DataFrame:
+
+def merge_tables(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
     merged = tables["DEMO"].copy()
     for name in ["DIQ", "BMX", "BPXO", "GLU"]:
         if name not in tables:
@@ -40,13 +47,26 @@ def merge_tables(tables:dict[str,pd.DataFrame]) -> pd.DataFrame:
         merged = merged.merge(other[keep_cols], on=ID_COL, how="left", validate="one_to_one")
     return merged
 
-def choose_weight_column(df:pd.DataFrame) -> str | None:
-    for col in WEIGHT_CANDIDATES:
+
+def choose_weight_column(
+    df: pd.DataFrame,
+    *,
+    fasting_subsample: bool = False,
+    interview_only: bool = False,
+) -> str | None:
+    if fasting_subsample:
+        candidates = FASTING_WEIGHT_CANDIDATES
+    elif interview_only:
+        candidates = INTERVIEW_WEIGHT_CANDIDATES
+    else:
+        candidates = EXAM_WEIGHT_CANDIDATES + INTERVIEW_WEIGHT_CANDIDATES
+    for col in candidates:
         if col in df.columns:
             return col
     return None
 
-def add_mean_blood_pressure(df:pd.DataFrame) -> pd.DataFrame:
+
+def add_mean_blood_pressure(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     sys_cols = [c for c in ["BPXOSY1", "BPXOSY2", "BPXOSY3"] if c in out.columns]
     dia_cols = [c for c in ["BPXODI1", "BPXODI2", "BPXODI3"] if c in out.columns]
@@ -56,14 +76,17 @@ def add_mean_blood_pressure(df:pd.DataFrame) -> pd.DataFrame:
         out["diastolic_bp_mean"] = out[dia_cols].mean(axis=1, skipna=True)
     return out
 
-def apply_clinical_plausibility_rules(df:pd.DataFrame) -> pd.DataFrame:
+
+def apply_clinical_plausibility_rules(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     for col, (low, high) in CLINICAL_RANGES.items():
         if col in out.columns:
-            out.loc[~out[col].between(low, high, inclusive="both"), col] = np.nan
+            numeric = pd.to_numeric(out[col], errors="coerce")
+            out[col] = numeric.where(numeric.between(low, high, inclusive="both"))
     return out
 
-def flag_outliers_iqr(df:pd.DataFrame, numeric_cols:list[str]) -> pd.DataFrame:
+
+def flag_outliers_iqr(df: pd.DataFrame, numeric_cols: list[str]) -> pd.DataFrame:
     out = df.copy()
     for col in numeric_cols:
         if col not in out.columns:
@@ -76,11 +99,13 @@ def flag_outliers_iqr(df:pd.DataFrame, numeric_cols:list[str]) -> pd.DataFrame:
         out[f"{col}_outlier"] = series.lt(low) | series.gt(high)
     return out
 
-def check_unique_person_key(df:pd.DataFrame, key:str=ID_COL) -> None:
+
+def check_unique_person_key(df: pd.DataFrame, key: str = ID_COL) -> None:
     if df[key].duplicated().any():
         raise ValueError(f"Duplicate rows found for {key}")
 
-def build_adult_analysis_frame(tables:dict[str,pd.DataFrame], min_age:int=18) -> pd.DataFrame:
+
+def build_adult_analysis_frame(tables: dict[str, pd.DataFrame], min_age: int = 18) -> pd.DataFrame:
     validate_tables(tables)
     cleaned = {name: standardise_missing_codes(df) for name, df in tables.items()}
     merged = merge_tables(cleaned)
@@ -90,10 +115,17 @@ def build_adult_analysis_frame(tables:dict[str,pd.DataFrame], min_age:int=18) ->
     check_unique_person_key(merged)
     return merged
 
-def summarise_qc(df:pd.DataFrame) -> dict[str,int]:
-    return {
+
+def summarise_qc(df: pd.DataFrame) -> dict[str, int | float]:
+    summary: dict[str, int | float] = {
         "n_rows": int(df.shape[0]),
         "n_columns": int(df.shape[1]),
         "n_missing_bmi": int(df["BMXBMI"].isna().sum()) if "BMXBMI" in df else 0,
         "n_missing_bp": int(df.get("systolic_bp_mean", pd.Series(dtype=float)).isna().sum()),
     }
+    if TARGET_COL in df.columns:
+        complete_target = df[TARGET_COL].dropna()
+        summary["n_complete_target"] = int(complete_target.shape[0])
+        summary["n_positive_target"] = int(complete_target.sum())
+        summary["unweighted_target_prevalence"] = float(complete_target.mean())
+    return summary

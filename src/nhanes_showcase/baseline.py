@@ -6,26 +6,31 @@ import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
 
-DEFAULT_BASELINE_FORMULA = """
-target_diabetes ~ age_years + C(sex) + bmi + systolic_bp_mean
-+ C(race_ethnicity) + C(education_level)
-"""
+DEFAULT_BASELINE_FORMULA = (
+    "target_diabetes ~ age_years + C(sex) + bmi + systolic_bp_mean "
+    "+ C(race_ethnicity) + C(education_level)"
+)
+
 
 def prepare_baseline_frame(df: pd.DataFrame) -> pd.DataFrame:
     cols = [
-        "target_diabetes", 
-        "age_years", 
-        "sex", 
-        "bmi", 
-        "systolic_bp_mean", 
-        "race_ethnicity", 
+        "target_diabetes",
+        "age_years",
+        "sex",
+        "bmi",
+        "systolic_bp_mean",
+        "race_ethnicity",
         "education_level",
     ]
     existing = [c for c in cols if c in df.columns]
     return df[existing].dropna().copy()
 
+
 def fit_logit_formula(df: pd.DataFrame, formula: str = DEFAULT_BASELINE_FORMULA):
-    return smf.logit(formula=formula, data=df).fit(disp=False)
+    if df.empty:
+        raise ValueError("No complete cases are available for the baseline model")
+    return smf.logit(formula=formula, data=df).fit(disp=False, cov_type="HC3")
+
 
 def odds_ratio_table(result) -> pd.DataFrame:
     ci = result.conf_int()
@@ -40,6 +45,7 @@ def odds_ratio_table(result) -> pd.DataFrame:
         }
     )
     return table.loc[table["term"] != "Intercept"].reset_index(drop=True)
+
 
 def save_baseline_outputs(result, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
